@@ -14,8 +14,6 @@ interface Props {
   config: MigrationConfig;
   onStatusChange: (id: number, status: StepStatus) => void;
   onLogsChange: (id: number, logs: LogLine[]) => void;
-  // Step 7 result callback
-  onEnvResult?: (content: string) => void;
 }
 
 async function runStep(
@@ -59,12 +57,12 @@ async function runStep(
 
 export default function StepCard({
   id, title, description, status, logs, config,
-  onStatusChange, onLogsChange, onEnvResult,
+  onStatusChange, onLogsChange,
 }: Props) {
   const [csvContent, setCsvContent] = useState<string>('');
   const [csvFiles, setCsvFiles] = useState<Array<{ name: string; content: string }>>([]);
   const [csvLoaded, setCsvLoaded] = useState<Array<{ name: string; content: string }>>([]);
-  const [envContent, setEnvContent] = useState<string>('');
+  const [vercelUrl, setVercelUrl] = useState<string>('');
 
   const isRunning = status === 'running';
 
@@ -101,8 +99,7 @@ export default function StepCard({
       (result) => {
         onStatusChange(id, 'done');
         if (id === 7 && typeof result === 'string') {
-          setEnvContent(result);
-          onEnvResult?.(result);
+          setVercelUrl(result);
         }
       },
       (msg) => {
@@ -163,24 +160,18 @@ export default function StepCard({
         </div>
       )}
 
-      {id === 7 && envContent && (
+      {id === 7 && vercelUrl && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs text-slate-400 font-semibold">Conteúdo do .env gerado:</p>
-          <pre className="bg-slate-900 rounded p-3 text-xs text-green-300 font-mono overflow-x-auto whitespace-pre-wrap">
-            {envContent}
-          </pre>
-          <button
-            onClick={() => {
-              const blob = new Blob([envContent], { type: 'text/plain' });
-              const a = document.createElement('a');
-              a.href = URL.createObjectURL(blob);
-              a.download = '.env.migrated';
-              a.click();
-            }}
-            className="px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-600 text-white text-xs font-semibold transition-colors"
+          <p className="text-xs text-slate-400 font-semibold">Projeto deployado:</p>
+          <a
+            href={vercelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-green-700/50 text-green-400 text-sm font-mono hover:border-green-500 transition-colors"
           >
-            ⬇ Download .env.migrated
-          </button>
+            <span>🚀</span>
+            {vercelUrl}
+          </a>
         </div>
       )}
     </div>

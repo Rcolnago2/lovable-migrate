@@ -1,9 +1,11 @@
 export interface MigrationConfig {
   supabaseUrl: string;
   supabaseServiceRoleKey: string;
+  supabaseAnonKey: string;
   supabaseDbConnection: string;
   githubRepo: string;
   githubToken: string;
+  vercelToken: string;
 }
 
 export type StepStatus = 'idle' | 'running' | 'done' | 'error' | 'skipped';

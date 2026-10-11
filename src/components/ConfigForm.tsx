@@ -10,10 +10,12 @@ interface Props {
 
 const fields: Array<{ key: keyof MigrationConfig; label: string; placeholder: string; secret?: boolean; hint: string }> = [
   { key: 'supabaseUrl', label: 'Supabase URL', placeholder: 'https://xxxx.supabase.co', hint: 'Supabase → Settings → API' },
-  { key: 'supabaseServiceRoleKey', label: 'Service Role Key', placeholder: 'eyJhbGci...', secret: true, hint: 'Supabase → Settings → API → service_role' },
+  { key: 'supabaseServiceRoleKey', label: 'Service Role Key', placeholder: 'eyJhbGci...', secret: true, hint: 'Supabase → Settings → API → service_role (para migração)' },
+  { key: 'supabaseAnonKey', label: 'Anon Key', placeholder: 'eyJhbGci...', secret: true, hint: 'Supabase → Settings → API → anon (para o .env do app)' },
   { key: 'supabaseDbConnection', label: 'DB Connection String', placeholder: 'postgresql://postgres:SENHA@db.xxxx.supabase.co:5432/postgres', secret: true, hint: 'Supabase → Settings → Database → Connection string' },
   { key: 'githubRepo', label: 'GitHub Repo', placeholder: 'usuario/repositorio', hint: 'Ex: joao/meu-app-lovable' },
   { key: 'githubToken', label: 'GitHub Token', placeholder: 'ghp_xxxx', secret: true, hint: 'GitHub → Settings → Developer settings → PAT (read:repo)' },
+  { key: 'vercelToken', label: 'Vercel Token', placeholder: 'xxxxxxxx', secret: true, hint: 'Vercel → Settings → Tokens → Create token (para deploy automático)' },
 ];
 
 export default function ConfigForm({ initial, onSave }: Props) {

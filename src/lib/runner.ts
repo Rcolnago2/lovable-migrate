@@ -246,23 +246,121 @@ export async function runStep6(
   info(emit, `Total: ${totalInserted} linhas inseridas, ${totalErrors} erros`);
 }
 
-// ── Step 7: Generate updated .env content ─────────────────────────────────────
+// ── Step 7: Deploy to Vercel ──────────────────────────────────────────────────
 
 export async function runStep7(cfg: MigrationConfig, emit: Emit): Promise<string | null> {
-  const match = cfg.supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
-  const projectId = match ? match[1] : '';
+  const { vercelToken, githubRepo, supabaseUrl, supabaseAnonKey } = cfg;
 
-  const lines = [
-    `# Atualizado por lovable-migrator`,
-    `VITE_SUPABASE_URL=${cfg.supabaseUrl}`,
-    `VITE_SUPABASE_PROJECT_ID=${projectId}`,
-    `# IMPORTANTE: atualize abaixo com a anon key (NÃO use a service_role key no frontend!)`,
-    `VITE_SUPABASE_PUBLISHABLE_KEY=<cole_aqui_a_anon_key>`,
-  ].join('\n');
+  if (!vercelToken) { warn(emit, 'Vercel Token não configurado'); return null; }
+  if (!githubRepo) { warn(emit, 'GitHub Repo não configurado'); return null; }
+  if (!supabaseUrl) { warn(emit, 'Supabase URL não configurada'); return null; }
 
-  success(emit, 'Conteúdo .env gerado');
-  info(emit, `URL: ${cfg.supabaseUrl}`);
-  info(emit, `Project ID: ${projectId}`);
-  warn(emit, 'Substitua VITE_SUPABASE_PUBLISHABLE_KEY pela anon key do Supabase (não a service_role!)');
-  return lines;
+  const [owner, repo] = githubRepo.split('/');
+  if (!owner || !repo) { warn(emit, 'GitHub Repo deve estar no formato usuario/repositorio'); return null; }
+
+  const headers = {
+    'Authorization': `Bearer ${vercelToken}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Check if project already exists
+  info(emit, `Verificando projeto Vercel "${repo}"...`);
+  const checkRes = await fetch(`https://api.vercel.com/v9/projects/${repo}`, { headers });
+
+  let projectId: string;
+  let projectUrl: string;
+
+  if (checkRes.ok) {
+    const existing = await checkRes.json() as { id: string; name: string };
+    projectId = existing.id;
+    projectUrl = `https://${repo}.vercel.app`;
+    info(emit, `Projeto existente encontrado: ${existing.name}`);
+  } else {
+    // Create project linked to GitHub
+    info(emit, `Criando projeto Vercel "${repo}"...`);
+    const createRes = await fetch('https://api.vercel.com/v10/projects', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        name: repo,
+        framework: 'nextjs',
+        gitRepository: {
+          type: 'github',
+          repo: githubRepo,
+        },
+      }),
+    });
+
+    if (!createRes.ok) {
+      const err = await createRes.json() as { error?: { message?: string } };
+      error(emit, `Erro ao criar projeto: ${err?.error?.message || createRes.statusText}`);
+      return null;
+    }
+
+    const created = await createRes.json() as { id: string; name: string };
+    projectId = created.id;
+    projectUrl = `https://${repo}.vercel.app`;
+    success(emit, `Projeto criado: ${created.name}`);
+  }
+
+  // Set environment variables
+  info(emit, 'Configurando variáveis de ambiente...');
+  const match = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
+  const projectRef = match ? match[1] : '';
+
+  const envVars = [
+    { key: 'VITE_SUPABASE_URL', value: supabaseUrl },
+    { key: 'VITE_SUPABASE_ANON_KEY', value: supabaseAnonKey || '' },
+    { key: 'NEXT_PUBLIC_SUPABASE_URL', value: supabaseUrl },
+    { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: supabaseAnonKey || '' },
+    ...(projectRef ? [{ key: 'VITE_SUPABASE_PROJECT_ID', value: projectRef }] : []),
+  ].filter(v => v.value);
+
+  const envRes = await fetch(`https://api.vercel.com/v10/projects/${projectId}/env`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(envVars.map(v => ({
+      key: v.key,
+      value: v.value,
+      type: 'plain',
+      target: ['production', 'preview', 'development'],
+    }))),
+  });
+
+  if (envRes.ok) {
+    success(emit, `${envVars.length} variáveis configuradas`);
+    for (const v of envVars) dim(emit, `  ${v.key}`);
+  } else {
+    warn(emit, 'Algumas variáveis podem já existir — continuando...');
+  }
+
+  // Trigger deployment
+  info(emit, 'Disparando deployment...');
+  const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      name: repo,
+      gitSource: {
+        type: 'github',
+        repoId: githubRepo,
+        ref: 'main',
+      },
+      projectId,
+    }),
+  });
+
+  if (!deployRes.ok) {
+    const err = await deployRes.json() as { error?: { message?: string } };
+    warn(emit, `Deploy automático falhou: ${err?.error?.message || deployRes.statusText}`);
+    warn(emit, 'Acesse o painel do Vercel para fazer deploy manualmente.');
+  } else {
+    const deploy = await deployRes.json() as { url?: string; id?: string };
+    success(emit, `Deployment iniciado: https://${deploy.url || projectUrl}`);
+  }
+
+  success(emit, `Projeto disponível em: ${projectUrl}`);
+  info(emit, 'Acesse o painel Vercel para acompanhar o status do deployment.');
+
+  return projectUrl;
 }

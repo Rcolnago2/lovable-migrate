@@ -6,21 +6,23 @@ import ConfigForm from '@/components/ConfigForm';
 import StepCard from '@/components/StepCard';
 
 const STEPS: Array<{ id: number; title: string; description: string }> = [
-  { id: 1, title: 'Exportar schema', description: 'Clona ou atualiza o repositório GitHub e lista as migrations SQL.' },
+  { id: 1, title: 'Clonar repositório', description: 'Clona ou atualiza o repositório GitHub e lista as migrations SQL.' },
   { id: 2, title: 'Aplicar schema', description: 'Executa as migrations SQL no Supabase destino (idempotente).' },
   { id: 3, title: 'Instruções: exportar usuários', description: 'Exibe a query para exportar auth.users do Lovable.' },
   { id: 4, title: 'Importar usuários', description: 'Importa usuários via Supabase Admin API preservando hashes de senha.' },
   { id: 5, title: 'Instruções: exportar tabelas', description: 'Exibe como exportar tabelas do Lovable Table Editor.' },
   { id: 6, title: 'Importar tabelas', description: 'Importa CSVs das tabelas respeitando ordem de FK (ON CONFLICT DO NOTHING).' },
-  { id: 7, title: 'Gerar .env atualizado', description: 'Gera o conteúdo do .env com as novas variáveis Supabase para download.' },
+  { id: 7, title: 'Deploy no Vercel', description: 'Cria projeto no Vercel, configura variáveis Supabase e dispara o deployment.' },
 ];
 
 const EMPTY_CONFIG: MigrationConfig = {
   supabaseUrl: '',
   supabaseServiceRoleKey: '',
+  supabaseAnonKey: '',
   supabaseDbConnection: '',
   githubRepo: '',
   githubToken: '',
+  vercelToken: '',
 };
 
 const CONFIG_KEY = 'lovable_migrator_config';
@@ -135,8 +137,8 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <span className="text-xl">🚀</span>
             <div>
-              <h1 className="text-sm font-bold text-slate-100">Lovable → Supabase Migrator</h1>
-              <p className="text-xs text-slate-500">v1.0.0</p>
+              <h1 className="text-sm font-bold text-slate-100">Lovable → Supabase + Vercel</h1>
+              <p className="text-xs text-slate-500">Migrador de projetos</p>
             </div>
           </div>
           <nav className="flex gap-1">
@@ -164,7 +166,7 @@ export default function Home() {
             <div>
               <h2 className="text-lg font-bold text-slate-100">Configuração</h2>
               <p className="text-sm text-slate-400 mt-1">
-                Informe as credenciais do projeto Lovable (origem) e do Supabase (destino).
+                Informe as credenciais do projeto Lovable (origem), Supabase (destino) e Vercel (deploy).
               </p>
             </div>
             <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-5">
